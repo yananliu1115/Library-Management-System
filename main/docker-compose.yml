@@ -1,0 +1,53 @@
+version: '3.8'
+services:
+  backend:
+    container_name: main_backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [sh, -c, 'sleep 10  && python manager.py db upgrade && python main.py'] 
+    # command: [sh, -c, 'sleep 10  && python main.py'] 
+
+    # command: [sh, -c, 'sleep infinity'] 
+    env_file:
+      - .env
+    ports:
+      - 8001:5000
+    volumes:
+      - .:/app
+      - ./mysqld:/var/run/mysqld:rw
+    depends_on:
+      - db
+
+  queue:
+    container_name: main_queue
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [sh, -c , 'sleep 10 && python -u consumer.py']
+    # command: [sh, -c, 'sleep infinity'] 
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./mysqld:/var/run/mysqld:rw
+    depends_on:
+      - db
+
+  db:
+    # image: mysql:5.7.22
+    container_name: main_db
+    image: arm64v8/mysql:oracle # for M1 mac
+    # restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: main
+      # MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    user: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - .dbdata:/var/lib/mysql:rw
+      - ./mysqld:/var/run/mysqld:rw
+    ports:
+      - 33068:3306

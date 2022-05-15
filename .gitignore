@@ -1,0 +1,9 @@
+*.DS_Store
+*__pycache__*
+*.zip
+*node_modules*
+# admin/*/migrations*
+*mysqld*
+*.dbdata
+*build*
+# *migrations*

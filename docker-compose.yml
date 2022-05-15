@@ -1,0 +1,105 @@
+version: '3.8'
+services:
+  frontend:
+    build: 
+      context: ./Frontend
+      dockerfile: Dockerfile
+    working_dir: /app
+    container_name: frontend
+    volumes:
+      - ./Frontend:/app
+    # command: bash -c "npm start"
+    ports:
+      - "3000:80"
+    # stdin_open: true
+  
+  admin_backend:
+    container_name: admin_backend
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    env_file:
+      - ./admin/.env
+    command: [ sh, -c, 'sleep 10 &&  python manage.py migrate &&  python manage.py runserver 0.0.0.0:8000'] # first time run
+    ports:
+      - 8000:8000
+    volumes:
+      - ./admin:/app
+      - ./admin/.mysqld:/var/run/mysqld:rw
+    depends_on:
+      - admin_db
+
+  admin_queue:
+    container_name: admin_queue
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    command: [sh, -c , 'sleep 10 && python -u consumer.py']
+    env_file:
+      - ./admin/.env
+    volumes:
+      - ./admin:/app
+      - ./admin/.mysqld:/var/run/mysqld:rw
+    depends_on:
+      - admin_db
+
+  admin_db:
+    container_name: admin_db
+    image: arm64v8/mysql:oracle # for M1 mac
+    # restart: always
+    environment:
+      MYSQL_DATABASE: admin
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    user: mysql
+    volumes:
+      - ./admin/.dbdata:/var/lib/mysql:rw
+      - ./admin/.mysqld:/var/run/mysqld:rw
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - 33066:3306
+
+  main_backend:
+    container_name: main_backend
+    build:
+      context: ./main
+      dockerfile: Dockerfile
+    command: [sh, -c, 'sleep 10  && python manager.py db upgrade && python main.py'] 
+    env_file:
+      - ./main/.env
+    ports:
+      - 8001:5000
+    volumes:
+      - ./main:/app
+      - ./main/.mysqld:/var/run/mysqld:rw
+    depends_on:
+      - main_db
+
+  main_queue:
+    container_name: main_queue
+    build:
+      context: ./main
+      dockerfile: Dockerfile
+    command: [sh, -c , 'sleep 10 && python -u consumer.py']
+    env_file:
+      - ./main/.env
+    volumes:
+      - ./main:/app
+      - ./main/.mysqld:/var/run/mysqld:rw
+    depends_on:
+      - main_db
+
+  main_db:
+    container_name: main_db
+    image: arm64v8/mysql:oracle # for M1 mac
+    environment:
+      MYSQL_DATABASE: main
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    user: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./main/.dbdata:/var/lib/mysql:rw
+      - ./main/.mysqld:/var/run/mysqld:rw
+    ports:
+      - 33068:3306

@@ -1,0 +1,15 @@
+version: '3.3'
+
+services:
+  frontend:
+    build: .
+    working_dir: /app
+    container_name: frontend
+    volumes:
+      - .:/app
+    # command: bash -c "npm install && npm run start" # first time
+    # command: bash -c "npm start"
+    # command: bash -c "sleep infinity"
+    ports:
+      - "3000:80"
+    # stdin_open: true
